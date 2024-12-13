@@ -1,36 +1,58 @@
-import React, { Component } from 'react'
-import Cookies from 'js-cookie'
-import { AiFillStar } from 'react-icons/ai'
-import { IoLocationSharp } from 'react-icons/io5'
-import { BsFillBriefcaseFill } from 'react-icons/bs'
-import { FiExternalLink } from 'react-icons/fi'
-import { ThreeDots } from 'react-loader-spinner'
-
-import Header from '../Header'
-import SimilarJobCard from '../SimilarJobCard'
-
-import './index.css'
+import React, { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+import { AiFillStar } from 'react-icons/ai';
+import { IoLocationSharp } from 'react-icons/io5';
+import { BsFillBriefcaseFill } from 'react-icons/bs';
+import { FiExternalLink } from 'react-icons/fi';
+import { ThreeDots } from 'react-loader-spinner';
+import Header from '../Header';
+import SimilarJobCard from '../SimilarJobCard';
+import { useParams } from 'react-router-dom';
+import './index.css';
 
 const apiStatusConstants = {
   initial: 'INITIAL',
   success: 'SUCCESS',
   failure: 'FAILURE',
   inProgress: 'IN_PROGRESS',
-}
+};
 
-class JobItemDetails extends Component {
-  state = {
-    jobDetailsApiStatus: apiStatusConstants.initial,
-    jobDetails: {},
-    similarJobs: [],
-  }
+const JobItemDetails = () => {
+  const { id } = useParams();
+  const [jobDetailsApiStatus, setJobDetailsApiStatus] = useState(apiStatusConstants.initial);
+  const [jobDetails, setJobDetails] = useState({});
+  const [similarJobs, setSimilarJobs] = useState([]);
 
-  componentDidMount() {
-    this.getJobItemDetails()
-  }
+  useEffect(() => {
+    const getJobItemDetails = async () => {
+      setJobDetailsApiStatus(apiStatusConstants.inProgress);
+      const jwtToken = Cookies.get('jwt_token');
+      const apiUrl = `https://apis.ccbp.in/jobs/${id}`;
+      const options = {
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+        },
+        method: 'GET',
+      };
+      
+      const response = await fetch(apiUrl, options);
+      const data = await response.json();
+      
+      if (response.ok) {
+        const { updatedJobDetails, similarJobs } = getCamelCasedData(data);
+        setJobDetails(updatedJobDetails);
+        setSimilarJobs(similarJobs);
+        setJobDetailsApiStatus(apiStatusConstants.success);
+      } else {
+        setJobDetailsApiStatus(apiStatusConstants.failure);
+      }
+    };
 
-  getCamelCasedData = data => {
-    const jobDetails = data.job_details
+    getJobItemDetails();
+  }, [id]);
+
+  const getCamelCasedData = (data) => {
+    const jobDetails = data.job_details;
 
     const updatedJobDetails = {
       companyLogoUrl: jobDetails.company_logo_url,
@@ -41,7 +63,7 @@ class JobItemDetails extends Component {
       rating: jobDetails.rating,
       title: jobDetails.title,
       packagePerAnnum: jobDetails.package_per_annum,
-      skills: jobDetails.skills.map(eachSkill => ({
+      skills: jobDetails.skills.map((eachSkill) => ({
         imageUrl: eachSkill.image_url,
         name: eachSkill.name,
       })),
@@ -49,9 +71,9 @@ class JobItemDetails extends Component {
         description: jobDetails.life_at_company.description,
         imageUrl: jobDetails.life_at_company.image_url,
       },
-    }
+    };
 
-    const similarJobs = data.similar_jobs.map(eachJob => ({
+    const similarJobs = data.similar_jobs.map((eachJob) => ({
       companyLogoUrl: eachJob.company_logo_url,
       employmentType: eachJob.employment_type,
       id: eachJob.id,
@@ -59,45 +81,18 @@ class JobItemDetails extends Component {
       location: eachJob.location,
       rating: eachJob.rating,
       title: eachJob.title,
-    }))
+    }));
 
-    return { updatedJobDetails, similarJobs }
-  }
+    return { updatedJobDetails, similarJobs };
+  };
 
-  getJobItemDetails = async () => {
-    this.setState({ jobDetailsApiStatus: apiStatusConstants.inProgress })
-    const { id } = this.props.match.params
-    const jwtToken = Cookies.get('jwt_token')
-
-    const apiUrl = `https://apis.ccbp.in/jobs/${id}`
-    const options = {
-      headers: {
-        Authorization: `Bearer ${jwtToken}`,
-      },
-      method: 'GET',
-    }
-    const response = await fetch(apiUrl, options)
-    const data = await response.json()
-    if (response.ok === true) {
-      const { updatedJobDetails, similarJobs } = this.getCamelCasedData(data)
-
-      this.setState({
-        jobDetails: updatedJobDetails,
-        similarJobs,
-        jobDetailsApiStatus: apiStatusConstants.success,
-      })
-    } else {
-      this.setState({ jobDetailsApiStatus: apiStatusConstants.failure })
-    }
-  }
-
-  renderLoaderView = () => (
+  const renderLoaderView = () => (
     <div className="jobs-loader-container" data-testid="loader">
       <ThreeDots type="ThreeDots" color="#ffffff" height="50" width="50" />
     </div>
-  )
+  );
 
-  renderApiFailureView = () => (
+  const renderApiFailureView = () => (
     <div className="jobs-api-failure-container">
       <img
         src="https://assets.ccbp.in/frontend/react-js/failure-img.png"
@@ -111,14 +106,14 @@ class JobItemDetails extends Component {
       <button
         type="button"
         className="retry-button"
-        onClick={this.getJobItemDetails}
+        onClick={() => window.location.reload()}
       >
         Retry
       </button>
     </div>
-  )
+  );
 
-  renderJobDetails = () => {
+  const renderJobDetails = () => {
     const {
       companyLogoUrl,
       employmentType,
@@ -130,7 +125,7 @@ class JobItemDetails extends Component {
       companyWebsiteUrl,
       skills,
       lifeAtCompnay,
-    } = this.state.jobDetails
+    } = jobDetails;
 
     return (
       <div className="job-details-content-container">
@@ -172,14 +167,14 @@ class JobItemDetails extends Component {
           <p className="job-description-card">{jobDescription}</p>
           <h1 className="skills-heading">Skills</h1>
           <ul className="skills-list">
-            {skills.map(eachSkill => {
-              const { imageUrl, name } = eachSkill
+            {skills.map((eachSkill) => {
+              const { imageUrl, name } = eachSkill;
               return (
                 <li className="skill-item" key={name}>
                   <img src={imageUrl} alt={name} className="skill-image" />
                   <p className="skill-name">{name}</p>
                 </li>
-              )
+              );
             })}
           </ul>
           <h1 className="life-at-company-heading">Life at Company</h1>
@@ -194,36 +189,33 @@ class JobItemDetails extends Component {
         </div>
         <h1 className="similar-jobs-heading">Similar Jobs</h1>
         <ul className="similar-jobs-list">
-          {this.state.similarJobs.map(eachJob => (
+          {similarJobs.map((eachJob) => (
             <SimilarJobCard key={eachJob.id} jobDetails={eachJob} />
           ))}
         </ul>
       </div>
-    )
-  }
+    );
+  };
 
-  renderJobDetailsPage = () => {
-    const { jobDetailsApiStatus } = this.state
+  const renderJobDetailsPage = () => {
     switch (jobDetailsApiStatus) {
       case apiStatusConstants.inProgress:
-        return this.renderLoaderView()
+        return renderLoaderView();
       case apiStatusConstants.success:
-        return this.renderJobDetails()
+        return renderJobDetails();
       case apiStatusConstants.failure:
-        return this.renderApiFailureView()
+        return renderApiFailureView();
       default:
-        return null
+        return null;
     }
-  }
+  };
 
-  render() {
-    return (
-      <div className="job-details-page">
-        <Header />
-        {this.renderJobDetailsPage()}
-      </div>
-    )
-  }
-}
+  return (
+    <div className="job-details-page">
+      <Header />
+      {renderJobDetailsPage()}
+    </div>
+  );
+};
 
-export default JobItemDetails
+export default JobItemDetails;
